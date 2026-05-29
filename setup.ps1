@@ -76,14 +76,11 @@ function Ensure-Python {
         return $python
     }
 
-    Write-Step "Python 3.10+ was not found. Trying winget install"
-    if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
-        throw "Python is missing and winget is not available. Install Python 3.10+ manually: https://www.python.org/downloads/"
-    }
+    $installed = $false
 
-    Invoke-Checked `
-        -Exe "winget" `
-        -Arguments @(
+    if (Get-Command winget -ErrorAction SilentlyContinue) {
+        Write-Step "Python 3.10+ was not found. Trying winget install"
+        & winget @(
             "install",
             "--id", "Python.Python.3.12",
             "-e",
@@ -91,8 +88,22 @@ function Ensure-Python {
             "--accept-package-agreements",
             "--accept-source-agreements",
             "--silent"
-        ) `
-        -ErrorMessage "winget could not install Python. Install Python 3.10+ manually and run start.bat again."
+        )
+        $installed = ($LASTEXITCODE -eq 0)
+    }
+
+    if (-not $installed -and (Get-Command choco -ErrorAction SilentlyContinue)) {
+        Write-Step "Trying Chocolatey install for Python"
+        Invoke-Checked `
+            -Exe "choco" `
+            -Arguments @("install", "python", "-y", "--no-progress") `
+            -ErrorMessage "Chocolatey could not install Python. Install Python 3.10+ manually and run start.bat again."
+        $installed = $true
+    }
+
+    if (-not $installed) {
+        throw "Python is missing and no supported installer was found. Install Python 3.10+ manually: https://www.python.org/downloads/"
+    }
 
     Update-ProcessPath
     $python = Get-PythonCandidate
@@ -194,14 +205,11 @@ function Find-Ffmpeg {
 function Ensure-Ffmpeg {
     $ffmpeg = Find-Ffmpeg
     if (-not $ffmpeg) {
-        Write-Step "ffmpeg was not found. Trying winget install"
-        if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
-            throw "ffmpeg is missing and winget is not available. Install ffmpeg manually and add it to PATH."
-        }
+        $installed = $false
 
-        Invoke-Checked `
-            -Exe "winget" `
-            -Arguments @(
+        if (Get-Command winget -ErrorAction SilentlyContinue) {
+            Write-Step "ffmpeg was not found. Trying winget install"
+            & winget @(
                 "install",
                 "--id", "Gyan.FFmpeg",
                 "-e",
@@ -209,8 +217,22 @@ function Ensure-Ffmpeg {
                 "--accept-package-agreements",
                 "--accept-source-agreements",
                 "--silent"
-            ) `
-            -ErrorMessage "winget could not install ffmpeg. Install ffmpeg manually and add it to PATH."
+            )
+            $installed = ($LASTEXITCODE -eq 0)
+        }
+
+        if (-not $installed -and (Get-Command choco -ErrorAction SilentlyContinue)) {
+            Write-Step "Trying Chocolatey install for ffmpeg"
+            Invoke-Checked `
+                -Exe "choco" `
+                -Arguments @("install", "ffmpeg", "-y", "--no-progress") `
+                -ErrorMessage "Chocolatey could not install ffmpeg. Install ffmpeg manually and add it to PATH."
+            $installed = $true
+        }
+
+        if (-not $installed) {
+            throw "ffmpeg is missing and no supported installer was found. Install ffmpeg manually and add it to PATH."
+        }
 
         Update-ProcessPath
         $ffmpeg = Find-Ffmpeg

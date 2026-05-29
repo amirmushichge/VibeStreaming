@@ -47,16 +47,16 @@ start.bat
 On first run, the setup script checks and prepares dependencies:
 
 - finds Python 3.10+;
-- tries to install Python through `winget` if Python is missing;
+- tries to install Python through `winget`, then Chocolatey, if Python is missing;
 - creates the local `.venv` environment;
 - installs Python packages from `requirements.txt`;
 - skips reinstalling packages on later runs unless `requirements.txt` changed or packages are missing;
 - checks `ffmpeg` and `ffprobe`;
-- tries to install `ffmpeg` through `winget` if it is missing;
+- tries to install `ffmpeg` through `winget`, then Chocolatey, if it is missing;
 - opens the app in the browser;
 - starts the local server at `127.0.0.1:8765`.
 
-If `winget` is unavailable or automatic installation fails, install these manually:
+If `winget` and Chocolatey are unavailable, or automatic installation fails, install these manually:
 
 - [Python 3.10+](https://www.python.org/downloads/)
 - [ffmpeg](https://ffmpeg.org/download.html)
