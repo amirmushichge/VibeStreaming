@@ -4,6 +4,11 @@ Local Windows app for launching looped video files as YouTube Live streams throu
 
 The app runs locally in a browser at `http://127.0.0.1:8765`. It is not a cloud service. OAuth files, channel tokens, uploaded videos, thumbnails, run history, and logs are stored on your own computer.
 
+## Creators
+
+- Amir Mushich: [X / @AmirMushich](https://x.com/AmirMushich)
+- Your AI Pulse: [X / @youraipulse](https://x.com/youraipulse)
+
 ## Continuous Runtime
 
 The stream runs only while the computer, this app, and the `ffmpeg` process are running. If you close the app window, shut down the PC, put the PC to sleep, lose internet, or stop the process, YouTube will stop receiving the stream.
