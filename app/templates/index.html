@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>YouTube Live Local</title>
+    <link rel="stylesheet" href="/static/styles.css?v=19" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div class="brand-block">
+          <div class="pixel-mark" aria-hidden="true">
+            <img class="pixel-logo" src="/static/pfp-logo.svg?v=2" alt="" />
+          </div>
+          <div>
+            <div class="eyebrow">&gt;live_control_</div>
+            <h1>LOCAL STREAM ROUTER</h1>
+          </div>
+        </div>
+        <div class="top-actions">
+          <nav class="social-links" aria-label="Social links">
+            <a class="social-link" href="https://x.com/youraipulse" target="_blank" rel="noreferrer">X / @youraipulse</a>
+            <a class="social-link" href="https://x.com/AmirMushich" target="_blank" rel="noreferrer">X / @AmirMushich</a>
+          </nav>
+          <div class="status-pill" id="connectionPill">Checking</div>
+        </div>
+      </header>
+
+      <section class="grid">
+        <form class="panel account-panel" id="secretForm">
+          <div class="panel-head">
+            <h2>ACCOUNT</h2>
+            <span id="secretState">Not configured</span>
+          </div>
+
+          <div class="account-box" id="accountBox">No channel connected</div>
+
+          <label class="channel-field">
+            <span>CHANNEL</span>
+            <select id="channelSelect">
+              <option value="">No channels connected</option>
+            </select>
+          </label>
+
+          <label class="file-field">
+            <span>OAUTH JSON</span>
+            <input name="file" type="file" accept="application/json,.json" />
+          </label>
+
+          <p class="muted">
+            OAuth client JSON is stored locally:
+            <span class="mono">{{ client_secret_path }}</span>
+          </p>
+
+          <div class="actions">
+            <a class="button secondary" href="/auth/login">&gt;add_channel</a>
+            <button type="submit">&gt;upload_json</button>
+            <button class="ghost" type="button" id="logoutBtn">&gt;remove</button>
+          </div>
+        </form>
+
+        <form class="panel stream-panel" id="streamForm">
+          <div class="panel-head">
+            <h2>BROADCAST SETUP</h2>
+            <span id="runState">Ready</span>
+          </div>
+
+          <div class="broadcast-grid">
+            <label class="video-field">
+              <span>VIDEO</span>
+              <input name="video" type="file" accept="video/*" required />
+            </label>
+
+            <label>
+              <span>TITLE</span>
+              <input name="title" type="text" maxlength="100" required placeholder="Best Stream" />
+            </label>
+
+            <label class="description-field">
+              <span>DESCRIPTION</span>
+              <textarea name="description" rows="3" placeholder="Yo! / x.com/youraipulse"></textarea>
+            </label>
+
+            <label>
+              <span>ACCESS</span>
+              <select name="privacy">
+                <option value="unlisted" selected>Unlisted</option>
+                <option value="private">Private</option>
+                <option value="public">Public</option>
+              </select>
+            </label>
+
+            <label>
+              <span>COVER</span>
+              <input name="thumbnail" type="file" accept="image/jpeg,image/png" />
+            </label>
+          </div>
+
+          <div class="destinations">
+            <div class="feature-note" id="featureNotice"></div>
+
+            <label class="check recording-check">
+              <input name="save_recording" type="checkbox" checked />
+              <span>RECORDING ON</span>
+            </label>
+
+            <div class="destination">
+              <label class="check">
+                <input name="enable_twitch" type="checkbox" disabled />
+                <span>TWITCH <em>SOON</em></span>
+              </label>
+              <div class="destination-grid">
+                <label>
+                  <span>TWITCH RTMP URL</span>
+                  <input
+                    name="twitch_url"
+                    type="text"
+                    value="rtmp://ingest.global-contribute.live-video.net/app"
+                    autocomplete="off"
+                    disabled
+                  />
+                </label>
+                <label>
+                  <span>TWITCH STREAM KEY</span>
+                  <input name="twitch_key" type="password" autocomplete="off" placeholder="live_..." disabled />
+                </label>
+              </div>
+            </div>
+
+            <div class="destination">
+              <label class="check">
+                <input name="enable_x" type="checkbox" disabled />
+                <span>X/TWITTER <em>SOON</em></span>
+              </label>
+              <div class="destination-grid">
+                <label>
+                  <span>X RTMP/RTMPS URL</span>
+                  <input name="x_url" type="text" autocomplete="off" placeholder="rtmps://..." disabled />
+                </label>
+                <label>
+                  <span>X STREAM KEY</span>
+                  <input name="x_key" type="password" autocomplete="off" disabled />
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="actions stream-actions">
+            <button class="primary" type="submit" id="startBtn">&gt;run</button>
+            <button class="danger" type="button" id="stopBtn">&gt;stop</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel status-panel">
+        <div class="panel-head">
+          <h2>STREAM STATUS</h2>
+          <span>AUTO-RECONNECT ON</span>
+        </div>
+
+        <div class="link-actions">
+          <a id="watchLink" href="#" target="_blank" rel="noreferrer">Stream link will appear after launch</a>
+          <button class="ghost small" type="button" id="copyLinkBtn" disabled>&gt;copy_link</button>
+        </div>
+
+        <div class="kv">
+          <div>
+            <span>STATE</span>
+            <strong id="streamState">Checking</strong>
+          </div>
+          <div>
+            <span>FILE</span>
+            <strong id="videoState">None</strong>
+          </div>
+          <div>
+            <span>RECORDING</span>
+            <strong id="recordingState">-</strong>
+          </div>
+        </div>
+
+        <div class="outputs" id="outputsState"></div>
+        <pre id="logs"></pre>
+      </section>
+    </main>
+
+    <script src="/static/app.js?v=19"></script>
+  </body>
+</html>

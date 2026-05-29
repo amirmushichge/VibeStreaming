@@ -1,0 +1,9 @@
+<svg width="500" height="700" viewBox="250 150 500 700" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="250" y="150" width="500" height="700" fill="#1A29CE" shape-rendering="crispEdges"/>
+  <path
+    fill="#A6FF00"
+    fill-rule="evenodd"
+    shape-rendering="crispEdges"
+    d="M300 200H602V300H702V500H400V600H300V200ZM400 300V400H602V300H400ZM300 700H400V800H300V700Z"
+  />
+</svg>
