@@ -43,6 +43,8 @@ RETRYABLE_GOOGLE_ERROR_MARKERS = (
     "winerror 10054",
 )
 
+YOUTUBE_API_CLIENT_OPTIONS = {"api_endpoint": "https://www.googleapis.com/"}
+
 
 def has_client_secret() -> bool:
     return CLIENT_SECRET_FILE.exists()
@@ -95,7 +97,13 @@ def _credentials_from_file(path: Path) -> Credentials:
 
 
 def _build_client_with_credentials(credentials: Credentials):
-    return build("youtube", "v3", credentials=credentials, cache_discovery=False)
+    return build(
+        "youtube",
+        "v3",
+        credentials=credentials,
+        cache_discovery=False,
+        client_options=YOUTUBE_API_CLIENT_OPTIONS,
+    )
 
 
 def _looks_retryable_google_error(exc: Exception) -> bool:
@@ -319,7 +327,7 @@ def get_credentials(channel_id: str | None = None) -> Credentials:
 
 
 def build_youtube_client(channel_id: str | None = None):
-    return build("youtube", "v3", credentials=get_credentials(channel_id), cache_discovery=False)
+    return _build_client_with_credentials(get_credentials(channel_id))
 
 
 def http_error_message(error: HttpError) -> str:

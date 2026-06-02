@@ -178,6 +178,7 @@ On the rented server, check that these URLs open in the browser:
 ```text
 https://accounts.google.com
 https://oauth2.googleapis.com
+https://www.googleapis.com
 https://youtube.googleapis.com
 ```
 
@@ -188,6 +189,8 @@ Then try:
 - disable or reconfigure antivirus HTTPS inspection if it is installed;
 - make sure the provider, firewall, or proxy is not blocking outbound HTTPS to Google;
 - try another VPS provider if Google HTTPS connections are unstable on that server.
+
+VibeStreaming uses `www.googleapis.com` for YouTube Data API calls because some VPS networks fail TLS handshakes with `youtube.googleapis.com`.
 
 ## Connection Drops
 
