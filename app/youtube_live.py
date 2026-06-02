@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import shutil
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -27,6 +28,20 @@ from .settings import (
 
 class YouTubeSetupError(RuntimeError):
     pass
+
+
+RETRYABLE_GOOGLE_ERROR_MARKERS = (
+    "ssl",
+    "tls",
+    "unexpected_eof",
+    "eof occurred",
+    "connection reset",
+    "connection aborted",
+    "remote host closed",
+    "timed out",
+    "timeout",
+    "winerror 10054",
+)
 
 
 def has_client_secret() -> bool:
@@ -81,6 +96,43 @@ def _credentials_from_file(path: Path) -> Credentials:
 
 def _build_client_with_credentials(credentials: Credentials):
     return build("youtube", "v3", credentials=credentials, cache_discovery=False)
+
+
+def _looks_retryable_google_error(exc: Exception) -> bool:
+    text = f"{type(exc).__name__}: {exc}".lower()
+    return any(marker in text for marker in RETRYABLE_GOOGLE_ERROR_MARKERS)
+
+
+def _google_network_error_message(action: str, exc: Exception) -> str:
+    return (
+        f"Google connection failed while {action}: {exc}. "
+        "This usually means the server network, firewall, proxy, antivirus, or TLS inspection closed the HTTPS "
+        "connection to Google. Try again once. If it repeats, check outbound HTTPS access to accounts.google.com, "
+        "oauth2.googleapis.com, and youtube.googleapis.com, then restart the app."
+    )
+
+
+def _run_google_request_with_retry(action: str, callback):
+    last_exc: Exception | None = None
+    for attempt in range(1, 4):
+        try:
+            return callback()
+        except Exception as exc:
+            last_exc = exc
+            if not _looks_retryable_google_error(exc) or attempt == 3:
+                break
+            time.sleep(attempt)
+
+    if last_exc and "invalid_grant" in f"{type(last_exc).__name__}: {last_exc}".lower():
+        raise YouTubeSetupError(
+            "Google rejected the OAuth code. This can happen if the one-time code was already used after a "
+            "network retry. Go back to the app and click >add_channel again."
+        ) from last_exc
+    if last_exc and _looks_retryable_google_error(last_exc):
+        raise YouTubeSetupError(_google_network_error_message(action, last_exc)) from last_exc
+    if last_exc:
+        raise last_exc
+    raise YouTubeSetupError(f"Google connection failed while {action}.")
 
 
 def _fetch_channels_for_credentials(credentials: Credentials) -> list[dict[str, Any]]:
@@ -214,10 +266,10 @@ def finish_auth(code: str, state: str | None) -> dict[str, Any]:
 
     flow = Flow.from_client_secrets_file(str(CLIENT_SECRET_FILE), scopes=YOUTUBE_SCOPES)
     flow.redirect_uri = REDIRECT_URI
-    flow.fetch_token(code=code)
+    _run_google_request_with_retry("exchanging OAuth code for a token", lambda: flow.fetch_token(code=code))
 
     credentials = flow.credentials
-    channels = _fetch_channels_for_credentials(credentials)
+    channels = _run_google_request_with_retry("reading YouTube channels", lambda: _fetch_channels_for_credentials(credentials))
     if not channels:
         raise YouTubeSetupError("No YouTube channel was found for the selected Google account.")
 

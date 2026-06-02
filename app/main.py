@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from html import escape
 import shutil
 import threading
 import uuid
@@ -50,6 +51,20 @@ app = FastAPI(title="YouTube Live Local")
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 stream_manager = StreamManager()
+
+
+def error_page(title: str, message: str, status_code: int = 400) -> HTMLResponse:
+    return HTMLResponse(
+        (
+            "<!doctype html><html><head><meta charset='utf-8'>"
+            f"<title>{escape(title)}</title></head><body>"
+            f"<h1>{escape(title)}</h1>"
+            f"<p>{escape(message)}</p>"
+            "<p><a href='/'>Back</a></p>"
+            "</body></html>"
+        ),
+        status_code=status_code,
+    )
 
 
 def safe_filename(filename: str) -> str:
@@ -122,16 +137,20 @@ def auth_login():
 @app.get("/oauth2callback", response_class=HTMLResponse)
 def oauth2callback(code: str | None = None, state: str | None = None, error: str | None = None):
     if error:
-        return HTMLResponse(f"<h1>Google OAuth error</h1><p>{error}</p><p><a href='/'>Back</a></p>", status_code=400)
+        return error_page("Google OAuth error", error)
     if not code:
-        return HTMLResponse("<h1>Missing OAuth code</h1><p><a href='/'>Back</a></p>", status_code=400)
+        return error_page("Missing OAuth code", "Google did not return an OAuth code.")
     try:
         channel = finish_auth(code, state)
+    except YouTubeSetupError as exc:
+        return error_page("Could not connect Google", str(exc))
     except Exception as exc:
-        return HTMLResponse(f"<h1>Could not connect Google</h1><p>{exc}</p><p><a href='/'>Back</a></p>", status_code=400)
+        return error_page("Could not connect Google", str(exc))
     title = channel.get("title") or channel.get("id") or "YouTube"
     handle = f" ({channel.get('customUrl')})" if channel.get("customUrl") else ""
-    return HTMLResponse(f"<h1>YouTube connected</h1><p>Channel: {title}{handle}</p><p><a href='/'>Open app</a></p>")
+    return HTMLResponse(
+        f"<h1>YouTube connected</h1><p>Channel: {escape(title + handle)}</p><p><a href='/'>Open app</a></p>"
+    )
 
 
 @app.post("/api/logout")

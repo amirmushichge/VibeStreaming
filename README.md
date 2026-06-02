@@ -169,6 +169,26 @@ Before running 24/7:
 
 The most sensitive files are the connected channel tokens stored under `.\data\tokens`. They allow the app to manage YouTube Live broadcasts for connected channels. If the server is compromised or you no longer trust it, stop the stream, delete the `.\data` folder on that server, and revoke the app access from your Google Account security settings.
 
+## OAuth Troubleshooting On VPS
+
+If Google login returns an SSL error such as `UNEXPECTED_EOF_WHILE_READING`, the OAuth callback reached the app, but the server failed while making an outbound HTTPS request back to Google.
+
+On the rented server, check that these URLs open in the browser:
+
+```text
+https://accounts.google.com
+https://oauth2.googleapis.com
+https://youtube.googleapis.com
+```
+
+Then try:
+
+- restart `start.bat` and repeat `>add_channel`;
+- update Windows root certificates through Windows Update;
+- disable or reconfigure antivirus HTTPS inspection if it is installed;
+- make sure the provider, firewall, or proxy is not blocking outbound HTTPS to Google;
+- try another VPS provider if Google HTTPS connections are unstable on that server.
+
 ## Connection Drops
 
 If `ffmpeg` exits because of a temporary RTMP/RTMPS network failure, the app tries to reconnect automatically. The YouTube broadcast is completed only when you click `>stop`; an unexpected `ffmpeg` exit does not automatically send a YouTube complete command.
