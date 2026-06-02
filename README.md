@@ -192,6 +192,8 @@ Then try:
 
 VibeStreaming uses `www.googleapis.com` for YouTube Data API calls because some VPS networks fail TLS handshakes with `youtube.googleapis.com`.
 
+For the same reason, the app prefers YouTube's plain `rtmp://` ingestion address when YouTube returns both RTMP and RTMPS addresses. Some rented Windows servers fail the RTMPS TLS connection to `a.rtmps.youtube.com:443`, while RTMP on port `1935` still works.
+
 ## Connection Drops
 
 If `ffmpeg` exits because of a temporary RTMP/RTMPS network failure, the app tries to reconnect automatically. The YouTube broadcast is completed only when you click `>stop`; an unexpected `ffmpeg` exit does not automatically send a YouTube complete command.

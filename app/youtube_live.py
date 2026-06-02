@@ -447,7 +447,7 @@ class YouTubeLiveService:
 
 def ingestion_url(stream: dict[str, Any]) -> str:
     info = stream.get("cdn", {}).get("ingestionInfo", {})
-    address = info.get("rtmpsIngestionAddress") or info.get("ingestionAddress")
+    address = info.get("ingestionAddress") or info.get("rtmpsIngestionAddress")
     stream_name = info.get("streamName")
     if not address or not stream_name:
         raise YouTubeSetupError("YouTube did not return an RTMP/RTMPS ingestion URL for the stream.")
