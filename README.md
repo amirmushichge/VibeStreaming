@@ -150,6 +150,25 @@ This folder may contain:
 
 Do not publish the `data` folder. It can contain tokens, private files, and local run history.
 
+## Security For 24/7 Servers
+
+When you run VibeStreaming on a rented Windows server or VPS, treat that server as the machine that owns the live stream session. The app is local, but the server still stores sensitive files in `.\data`.
+
+Before running 24/7:
+
+- Use a trusted VPS provider and a fresh Windows server image.
+- Change the default RDP password immediately.
+- Use a long unique administrator password.
+- Keep Windows Firewall enabled.
+- Do not expose port `8765` to the public internet.
+- Open the app only inside the server session at `http://127.0.0.1:8765`.
+- Do not upload `client_secret.json`, token files, videos, thumbnails, or `.\data` to GitHub, chats, file-sharing links, or public storage.
+- Do not run unknown cracked software, browser extensions, or untrusted scripts on the streaming server.
+- Disable sleep mode and review Windows Update restart settings before long broadcasts.
+- Keep enough disk space for uploaded videos, thumbnails, logs, and temporary files.
+
+The most sensitive files are the connected channel tokens stored under `.\data\tokens`. They allow the app to manage YouTube Live broadcasts for connected channels. If the server is compromised or you no longer trust it, stop the stream, delete the `.\data` folder on that server, and revoke the app access from your Google Account security settings.
+
 ## Connection Drops
 
 If `ffmpeg` exits because of a temporary RTMP/RTMPS network failure, the app tries to reconnect automatically. The YouTube broadcast is completed only when you click `>stop`; an unexpected `ffmpeg` exit does not automatically send a YouTube complete command.
