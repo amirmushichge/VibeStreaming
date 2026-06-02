@@ -6,6 +6,15 @@ $VenvPython = Join-Path $VenvDir "Scripts\python.exe"
 $RequirementsFile = Join-Path $Root "requirements.txt"
 $RequirementMarker = Join-Path $VenvDir ".requirements.sha256"
 $AppUrl = "http://127.0.0.1:8765"
+$ToolsDir = Join-Path $Root "tools"
+$DownloadDir = Join-Path $ToolsDir "downloads"
+$PythonInstallerUrl = "https://www.python.org/ftp/python/3.12.10/python-3.12.10-amd64.exe"
+$PythonInstallerFile = Join-Path $DownloadDir "python-3.12.10-amd64.exe"
+$PythonInstallDir = Join-Path $env:LOCALAPPDATA "Programs\Python\Python312"
+$FfmpegZipUrl = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
+$FfmpegZipFile = Join-Path $DownloadDir "ffmpeg-release-essentials.zip"
+$FfmpegExtractDir = Join-Path $ToolsDir "ffmpeg-extract"
+$FfmpegLocalDir = Join-Path $ToolsDir "ffmpeg"
 
 Set-Location $Root
 
@@ -32,6 +41,35 @@ function Update-ProcessPath {
     $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
     $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
     $env:Path = "$userPath;$machinePath"
+}
+
+function Ensure-Directory {
+    param([string]$Path)
+
+    if (-not (Test-Path $Path)) {
+        New-Item -ItemType Directory -Path $Path -Force | Out-Null
+    }
+}
+
+function Invoke-Download {
+    param(
+        [string]$Url,
+        [string]$OutputPath,
+        [string]$ErrorMessage
+    )
+
+    Ensure-Directory -Path (Split-Path -Parent $OutputPath)
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+    try {
+        Invoke-WebRequest -Uri $Url -OutFile $OutputPath -UseBasicParsing
+    } catch {
+        throw "$ErrorMessage $($_.Exception.Message)"
+    }
+
+    if (-not (Test-Path $OutputPath)) {
+        throw $ErrorMessage
+    }
 }
 
 function Test-PythonCandidate {
@@ -67,7 +105,50 @@ function Get-PythonCandidate {
         }
     }
 
+    $knownRoots = @(
+        (Join-Path $env:LOCALAPPDATA "Programs\Python"),
+        $env:ProgramFiles
+    )
+
+    foreach ($knownRoot in $knownRoots) {
+        if (-not $knownRoot -or -not (Test-Path $knownRoot)) {
+            continue
+        }
+
+        $matches = Get-ChildItem -Path $knownRoot -Directory -Filter "Python*" -ErrorAction SilentlyContinue |
+            Sort-Object -Property Name -Descending
+
+        foreach ($match in $matches) {
+            $candidate = Join-Path $match.FullName "python.exe"
+            if ((Test-Path $candidate) -and (Test-PythonCandidate -Exe $candidate)) {
+                return @{ Exe = $candidate; Args = @() }
+            }
+        }
+    }
+
     return $null
+}
+
+function Install-PythonFromOfficialInstaller {
+    Write-Step "Trying direct Python download from python.org"
+    Invoke-Download `
+        -Url $PythonInstallerUrl `
+        -OutputPath $PythonInstallerFile `
+        -ErrorMessage "Could not download Python installer."
+
+    Ensure-Directory -Path $PythonInstallDir
+    $installerArgs = "/quiet InstallAllUsers=0 InstallLauncherAllUsers=0 Include_launcher=1 Include_pip=1 Include_test=0 PrependPath=1 TargetDir=`"$PythonInstallDir`""
+    $process = Start-Process `
+        -FilePath $PythonInstallerFile `
+        -ArgumentList $installerArgs `
+        -Wait `
+        -PassThru
+
+    if ($process.ExitCode -ne 0 -and $process.ExitCode -ne 3010) {
+        throw "Python installer failed with exit code $($process.ExitCode). Install Python 3.10+ manually: https://www.python.org/downloads/"
+    }
+
+    Remove-Item -LiteralPath $PythonInstallerFile -Force -ErrorAction SilentlyContinue
 }
 
 function Ensure-Python {
@@ -102,7 +183,8 @@ function Ensure-Python {
     }
 
     if (-not $installed) {
-        throw "Python is missing and no supported installer was found. Install Python 3.10+ manually: https://www.python.org/downloads/"
+        Install-PythonFromOfficialInstaller
+        $installed = $true
     }
 
     Update-ProcessPath
@@ -202,6 +284,46 @@ function Find-Ffmpeg {
     return $null
 }
 
+function Install-LocalFfmpeg {
+    Write-Step "Trying direct ffmpeg download"
+    Invoke-Download `
+        -Url $FfmpegZipUrl `
+        -OutputPath $FfmpegZipFile `
+        -ErrorMessage "Could not download ffmpeg."
+
+    if (Test-Path $FfmpegExtractDir) {
+        Remove-Item -LiteralPath $FfmpegExtractDir -Recurse -Force
+    }
+
+    Expand-Archive -LiteralPath $FfmpegZipFile -DestinationPath $FfmpegExtractDir -Force
+    $ffmpegExe = Get-ChildItem -Path $FfmpegExtractDir -Filter "ffmpeg.exe" -File -Recurse -ErrorAction SilentlyContinue |
+        Select-Object -First 1
+
+    if (-not $ffmpegExe) {
+        throw "ffmpeg archive was downloaded but ffmpeg.exe was not found."
+    }
+
+    $sourceBinDir = Split-Path -Parent $ffmpegExe.FullName
+
+    if (Test-Path $FfmpegLocalDir) {
+        Remove-Item -LiteralPath $FfmpegLocalDir -Recurse -Force
+    }
+
+    Ensure-Directory -Path (Join-Path $FfmpegLocalDir "bin")
+    Copy-Item -LiteralPath (Join-Path $sourceBinDir "ffmpeg.exe") -Destination (Join-Path $FfmpegLocalDir "bin\ffmpeg.exe") -Force
+
+    $ffprobeSource = Join-Path $sourceBinDir "ffprobe.exe"
+    if (Test-Path $ffprobeSource) {
+        Copy-Item -LiteralPath $ffprobeSource -Destination (Join-Path $FfmpegLocalDir "bin\ffprobe.exe") -Force
+    }
+
+    if (Test-Path $FfmpegExtractDir) {
+        Remove-Item -LiteralPath $FfmpegExtractDir -Recurse -Force
+    }
+
+    Remove-Item -LiteralPath $FfmpegZipFile -Force -ErrorAction SilentlyContinue
+}
+
 function Ensure-Ffmpeg {
     $ffmpeg = Find-Ffmpeg
     if (-not $ffmpeg) {
@@ -231,7 +353,8 @@ function Ensure-Ffmpeg {
         }
 
         if (-not $installed) {
-            throw "ffmpeg is missing and no supported installer was found. Install ffmpeg manually and add it to PATH."
+            Install-LocalFfmpeg
+            $installed = $true
         }
 
         Update-ProcessPath
