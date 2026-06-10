@@ -17,46 +17,32 @@ const watchLink = document.querySelector("#watchLink");
 const outputsState = document.querySelector("#outputsState");
 const logs = document.querySelector("#logs");
 const featureNotice = document.querySelector("#featureNotice");
-
-const destinationPreset = document.querySelector("#destinationPreset");
-const destinationLabel = document.querySelector("#destinationLabel");
-const destinationUrl = document.querySelector("#destinationUrl");
-const destinationKey = document.querySelector("#destinationKey");
-const destinationEnabled = document.querySelector("#destinationEnabled");
-const saveDestinationBtn = document.querySelector("#saveDestinationBtn");
-const clearDestinationBtn = document.querySelector("#clearDestinationBtn");
-const destinationList = document.querySelector("#destinationList");
-
-let rtmpPresets = [];
-let rtmpDestinations = [];
-let editingDestinationId = "";
+const savedRtmpFields = ["enable_twitch", "twitch_url", "twitch_key", "enable_x", "x_url", "x_key"];
 
 function setBusy(isBusy) {
   startBtn.disabled = isBusy;
   stopBtn.disabled = isBusy;
 }
 
-async function requestJson(url, options = {}) {
-  const response = await fetch(url, options);
+async function postForm(url, form) {
+  const body = new FormData(form);
+  if (form === streamForm) {
+    const twitchToggle = form.elements.enable_twitch;
+    const xToggle = form.elements.enable_x;
+    body.set("save_recording", form.elements.save_recording.checked ? "true" : "false");
+    body.set("channel_id", channelSelect.value || "");
+    body.set("enable_twitch", twitchToggle && !twitchToggle.disabled && twitchToggle.checked ? "true" : "false");
+    body.set("enable_x", xToggle && !xToggle.disabled && xToggle.checked ? "true" : "false");
+  }
+  const response = await fetch(url, {
+    method: "POST",
+    body,
+  });
   const payload = await response.json();
   if (!response.ok) {
     throw new Error(payload.detail || "Request failed");
   }
   return payload;
-}
-
-async function postForm(url, form) {
-  const body = new FormData(form);
-  if (form === streamForm) {
-    body.set("save_recording", form.elements.save_recording.checked ? "true" : "false");
-    body.set("channel_id", channelSelect.value || "");
-    body.set("enable_twitch", "false");
-    body.set("enable_x", "false");
-  }
-  return requestJson(url, {
-    method: "POST",
-    body,
-  });
 }
 
 function channelLabel(channel) {
@@ -94,11 +80,48 @@ function renderChannels(status) {
   }
 }
 
-function setupFileInputs() {
-  for (const input of document.querySelectorAll('input[type="file"]')) {
-    if (input.dataset.customized === "true") {
+function loadRtmpSettings() {
+  for (const name of savedRtmpFields) {
+    const field = streamForm.elements[name];
+    if (!field) {
       continue;
     }
+    if (field.disabled) {
+      if (field.type === "checkbox") {
+        field.checked = false;
+      }
+      continue;
+    }
+    const value = localStorage.getItem(`youtube-live-local:${name}`);
+    if (value === null) {
+      continue;
+    }
+    if (field.type === "checkbox") {
+      field.checked = value === "true";
+    } else {
+      field.value = value;
+    }
+  }
+}
+
+function saveRtmpSettings() {
+  for (const name of savedRtmpFields) {
+    const field = streamForm.elements[name];
+    if (!field) {
+      continue;
+    }
+    if (field.disabled) {
+      continue;
+    }
+    localStorage.setItem(
+      `youtube-live-local:${name}`,
+      field.type === "checkbox" ? String(field.checked) : field.value
+    );
+  }
+}
+
+function setupFileInputs() {
+  for (const input of document.querySelectorAll('input[type="file"]')) {
     const wrapper = document.createElement("div");
     const button = document.createElement("button");
     const name = document.createElement("span");
@@ -113,7 +136,6 @@ function setupFileInputs() {
       name.textContent = input.files && input.files.length ? input.files[0].name : "No file chosen";
     });
 
-    input.dataset.customized = "true";
     input.classList.add("native-file");
     input.insertAdjacentElement("afterend", wrapper);
     wrapper.append(button, name);
@@ -131,169 +153,33 @@ function appendOutputChip(label, stateText, stateClass) {
   outputsState.appendChild(chip);
 }
 
-function renderOutputs(current, streamRunning) {
+function renderOutputs(current) {
   outputsState.textContent = "";
   const outputs = current.outputs || [];
+  const visibleOutputIds = new Set();
 
-  if (outputs.length) {
-    for (const output of outputs) {
-      const status = (current.output_statuses || {})[output.id] || {};
-      appendOutputChip(output.label, status.running ? "RUNNING" : "STOPPED", status.running ? "running" : "stopped");
-    }
-    return;
+  for (const output of outputs) {
+    visibleOutputIds.add(output.id);
+    const status = (current.output_statuses || {})[output.id] || {};
+    appendOutputChip(output.label, status.running ? "RUNNING" : "STOPPED", status.running ? "running" : "stopped");
   }
 
-  appendOutputChip("YOUTUBE", streamRunning ? "RUNNING" : "READY", streamRunning ? "running" : "stopped");
-  for (const destination of rtmpDestinations) {
-    appendOutputChip(destination.label, destination.enabled ? "READY" : "OFF", destination.enabled ? "ready" : "stopped");
+  if (!visibleOutputIds.has("twitch")) {
+    appendOutputChip("TWITCH", "SOON", "soon");
   }
-}
-
-function presetLabel(preset) {
-  return preset.label || preset.platform || "Custom RTMP";
-}
-
-function renderPresetOptions() {
-  const previous = destinationPreset.value;
-  destinationPreset.innerHTML = "";
-  for (const preset of rtmpPresets) {
-    const option = document.createElement("option");
-    option.value = preset.platform;
-    option.textContent = presetLabel(preset);
-    destinationPreset.appendChild(option);
+  if (!visibleOutputIds.has("x")) {
+    appendOutputChip("X/TWITTER", "SOON", "soon");
   }
-  if (rtmpPresets.some((preset) => preset.platform === previous)) {
-    destinationPreset.value = previous;
-  }
-}
-
-function selectedPreset() {
-  return rtmpPresets.find((preset) => preset.platform === destinationPreset.value) || rtmpPresets[0] || null;
-}
-
-function clearDestinationEditor() {
-  editingDestinationId = "";
-  const preset = selectedPreset();
-  destinationLabel.value = preset ? preset.label : "";
-  destinationUrl.value = preset ? preset.server_url : "";
-  destinationKey.value = "";
-  destinationEnabled.checked = true;
-  saveDestinationBtn.textContent = ">save_destination";
-}
-
-function editDestination(destination) {
-  editingDestinationId = destination.id;
-  destinationPreset.value = destination.platform || "custom";
-  destinationLabel.value = destination.label || "";
-  destinationUrl.value = destination.server_url || "";
-  destinationKey.value = "";
-  destinationEnabled.checked = Boolean(destination.enabled);
-  saveDestinationBtn.textContent = ">update_destination";
-}
-
-async function setDestinationEnabled(destination, enabled) {
-  await requestJson(`/api/rtmp-destinations/${encodeURIComponent(destination.id)}/enabled`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ enabled }),
-  });
-  await loadDestinations();
-  await refreshStatus();
-}
-
-function renderDestinationList() {
-  destinationList.textContent = "";
-  if (!rtmpDestinations.length) {
-    const empty = document.createElement("div");
-    empty.className = "destination-empty";
-    empty.textContent = "No RTMP destinations saved";
-    destinationList.appendChild(empty);
-    return;
-  }
-
-  for (const destination of rtmpDestinations) {
-    const item = document.createElement("div");
-    const meta = document.createElement("div");
-    const title = document.createElement("strong");
-    const url = document.createElement("span");
-    const key = document.createElement("span");
-    const controls = document.createElement("div");
-    const toggleLabel = document.createElement("label");
-    const toggle = document.createElement("input");
-    const toggleText = document.createElement("span");
-    const editBtn = document.createElement("button");
-    const deleteBtn = document.createElement("button");
-
-    item.className = "destination-item";
-    meta.className = "destination-meta";
-    controls.className = "destination-controls";
-    toggleLabel.className = "check mini-check";
-
-    title.textContent = destination.label;
-    url.textContent = destination.server_url;
-    key.textContent = destination.has_stream_key ? "Stream key saved" : "Stream key missing";
-
-    toggle.type = "checkbox";
-    toggle.checked = Boolean(destination.enabled);
-    toggleText.textContent = destination.enabled ? "ON" : "OFF";
-    toggle.addEventListener("change", async () => {
-      try {
-        await setDestinationEnabled(destination, toggle.checked);
-      } catch (error) {
-        alert(error.message);
-        toggle.checked = !toggle.checked;
-      }
-    });
-
-    editBtn.type = "button";
-    editBtn.className = "ghost small";
-    editBtn.textContent = ">edit";
-    editBtn.addEventListener("click", () => editDestination(destination));
-
-    deleteBtn.type = "button";
-    deleteBtn.className = "ghost small";
-    deleteBtn.textContent = ">delete";
-    deleteBtn.addEventListener("click", async () => {
-      if (!confirm(`Delete RTMP destination: ${destination.label}?`)) {
-        return;
-      }
-      try {
-        await requestJson(`/api/rtmp-destinations/${encodeURIComponent(destination.id)}`, { method: "DELETE" });
-        if (editingDestinationId === destination.id) {
-          clearDestinationEditor();
-        }
-        await loadDestinations();
-      } catch (error) {
-        alert(error.message);
-      }
-    });
-
-    meta.append(title, url, key);
-    toggleLabel.append(toggle, toggleText);
-    controls.append(toggleLabel, editBtn, deleteBtn);
-    item.append(meta, controls);
-    destinationList.appendChild(item);
-  }
-}
-
-async function loadDestinations() {
-  const payload = await requestJson("/api/rtmp-destinations");
-  rtmpPresets = payload.presets || [];
-  rtmpDestinations = payload.destinations || [];
-  renderPresetOptions();
-  if (!editingDestinationId) {
-    clearDestinationEditor();
-  }
-  renderDestinationList();
 }
 
 async function refreshStatus() {
-  const status = await requestJson("/api/status");
-  const multistreamReady = Boolean(status.features && status.features.multistream && status.features.custom_rtmp);
+  const response = await fetch("/api/status");
+  const status = await response.json();
+  const multistreamReady = Boolean(status.features && status.features.multistream);
   if (featureNotice) {
     featureNotice.textContent = multistreamReady
       ? ""
-      : "Custom RTMP becomes available after restarting the app. The current stream was not stopped.";
+      : "Twitch/X files are present, but they become available after restarting the app. The current stream was not stopped.";
     featureNotice.className = multistreamReady ? "feature-note" : "feature-note visible";
   }
 
@@ -322,7 +208,7 @@ async function refreshStatus() {
   videoState.textContent = current.video_path || "None";
   recordingState.textContent =
     current.save_recording === undefined ? "-" : current.save_recording ? "Yes" : "No";
-  renderOutputs(current, stream.running);
+  renderOutputs(current);
 
   if (current.broadcast_url) {
     watchLink.href = current.broadcast_url;
@@ -349,37 +235,13 @@ secretForm.addEventListener("submit", async (event) => {
   }
 });
 
-destinationPreset.addEventListener("change", () => {
-  if (editingDestinationId) {
-    return;
+for (const name of savedRtmpFields) {
+  const field = streamForm.elements[name];
+  if (field) {
+    field.addEventListener("change", saveRtmpSettings);
+    field.addEventListener("input", saveRtmpSettings);
   }
-  clearDestinationEditor();
-});
-
-clearDestinationBtn.addEventListener("click", clearDestinationEditor);
-
-saveDestinationBtn.addEventListener("click", async () => {
-  const payload = {
-    id: editingDestinationId,
-    platform: destinationPreset.value,
-    label: destinationLabel.value,
-    server_url: destinationUrl.value,
-    stream_key: destinationKey.value,
-    enabled: destinationEnabled.checked,
-  };
-  try {
-    await requestJson("/api/rtmp-destinations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    clearDestinationEditor();
-    await loadDestinations();
-    await refreshStatus();
-  } catch (error) {
-    alert(error.message);
-  }
-});
+}
 
 channelSelect.addEventListener("change", async () => {
   if (!channelSelect.value) {
@@ -417,7 +279,11 @@ streamForm.addEventListener("submit", async (event) => {
 stopBtn.addEventListener("click", async () => {
   setBusy(true);
   try {
-    await requestJson("/api/stop", { method: "POST" });
+    const response = await fetch("/api/stop", { method: "POST" });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.detail || "Could not stop stream");
+    }
     await refreshStatus();
   } catch (error) {
     alert(error.message);
@@ -448,7 +314,6 @@ copyLinkBtn.addEventListener("click", async () => {
 });
 
 setupFileInputs();
-loadDestinations()
-  .then(refreshStatus)
-  .catch((error) => alert(error.message));
+loadRtmpSettings();
+refreshStatus();
 setInterval(refreshStatus, 2500);

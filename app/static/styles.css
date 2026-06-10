@@ -436,115 +436,6 @@ textarea::placeholder {
   display: block;
 }
 
-.rtmp-manager {
-  flex: 1 0 100%;
-  border: 1px solid var(--grid);
-  background: rgba(255, 255, 255, 0.03);
-  padding: 10px;
-}
-
-.rtmp-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 10px;
-}
-
-.rtmp-head span {
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 12px;
-  text-transform: uppercase;
-}
-
-.rtmp-editor {
-  display: grid;
-  grid-template-columns: minmax(130px, 0.7fr) minmax(150px, 0.9fr) minmax(260px, 1.45fr) minmax(210px, 1fr);
-  gap: 10px;
-  align-items: end;
-}
-
-.rtmp-editor label {
-  margin-bottom: 0;
-}
-
-.destination-enable,
-.rtmp-actions {
-  min-height: 42px;
-}
-
-.destination-enable {
-  grid-column: 1 / span 1;
-}
-
-.destination-enable span {
-  min-width: 96px;
-}
-
-.rtmp-actions {
-  grid-column: 2 / -1;
-  align-items: end;
-  margin-top: 0;
-}
-
-.destination-list {
-  display: grid;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.destination-empty {
-  border: 1px dashed var(--grid);
-  color: rgba(255, 255, 255, 0.58);
-  padding: 11px 12px;
-  text-transform: uppercase;
-}
-
-.destination-item {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: center;
-  border: 1px solid var(--grid);
-  background: rgba(27, 27, 27, 0.46);
-  padding: 10px;
-}
-
-.destination-meta {
-  display: grid;
-  min-width: 0;
-  gap: 4px;
-}
-
-.destination-meta strong {
-  color: var(--white);
-  font-size: 14px;
-  font-weight: 500;
-  overflow-wrap: anywhere;
-  text-transform: uppercase;
-}
-
-.destination-meta span {
-  min-width: 0;
-  color: rgba(255, 255, 255, 0.62);
-  font-size: 12px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.destination-controls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.mini-check span {
-  min-width: 54px;
-  min-height: 34px;
-  padding: 7px 9px;
-}
-
 .destination {
   display: contents;
 }
@@ -733,11 +624,6 @@ button:disabled {
   color: rgba(27, 27, 27, 0.72);
 }
 
-.output-chip.ready {
-  border-color: var(--lime);
-  color: var(--lime);
-}
-
 .output-chip.stopped {
   border-color: var(--grid);
   color: rgba(255, 255, 255, 0.7);
@@ -792,8 +678,6 @@ pre:empty::before {
   .topbar,
   .grid,
   .broadcast-grid,
-  .rtmp-editor,
-  .destination-item,
   .destination-grid,
   .kv,
   .outputs,
@@ -807,8 +691,7 @@ pre:empty::before {
   }
 
   .top-actions,
-  .social-links,
-  .destination-controls {
+  .social-links {
     display: grid;
     grid-template-columns: 1fr;
   }

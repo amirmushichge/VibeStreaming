@@ -6,9 +6,8 @@ import threading
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
-from fastapi import Body, FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -30,14 +29,6 @@ from .stream_manager import (
     build_rtmp_output_url,
     wait_then_go_live,
 )
-from .rtmp_destinations import (
-    delete_destination,
-    enabled_destinations,
-    list_destinations,
-    list_presets,
-    save_destination,
-    set_destination_enabled,
-)
 from .youtube_live import (
     YouTubeLiveService,
     YouTubeSetupError,
@@ -56,7 +47,7 @@ from .youtube_live import (
 
 ensure_dirs()
 
-app = FastAPI(title="VibeStreaming")
+app = FastAPI(title="YouTube Live Local")
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 stream_manager = StreamManager()
@@ -121,39 +112,9 @@ def api_status():
         "channels": channels,
         "active_channel_id": active_id,
         "channel_error": channel_error,
-        "features": {"multistream": True, "custom_rtmp": True, "version": 5},
+        "features": {"multistream": True, "version": 4},
         "stream": stream_manager.status(),
     }
-
-
-@app.get("/api/rtmp-destinations")
-def api_rtmp_destinations():
-    return {"presets": list_presets(), "destinations": list_destinations()}
-
-
-@app.post("/api/rtmp-destinations")
-def api_save_rtmp_destination(payload: dict[str, Any] = Body(...)):
-    try:
-        return {"ok": True, "destination": save_destination(payload)}
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-
-@app.post("/api/rtmp-destinations/{destination_id}/enabled")
-def api_set_rtmp_destination_enabled(destination_id: str, payload: dict[str, Any] = Body(...)):
-    try:
-        return {"ok": True, "destination": set_destination_enabled(destination_id, bool(payload.get("enabled")))}
-    except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-
-@app.delete("/api/rtmp-destinations/{destination_id}")
-def api_delete_rtmp_destination(destination_id: str):
-    try:
-        delete_destination(destination_id)
-    except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    return {"ok": True}
 
 
 @app.post("/api/client-secret")
@@ -235,23 +196,11 @@ def start_stream(
 
     try:
         extra_outputs: list[dict[str, str]] = []
-        for destination in enabled_destinations():
-            stream_key = str(destination.get("stream_key") or "").strip()
-            extra_outputs.append(
-                {
-                    "id": str(destination.get("id")),
-                    "label": str(destination.get("label") or "Custom RTMP"),
-                    "platform": str(destination.get("platform") or "custom"),
-                    "url": build_rtmp_output_url(str(destination.get("server_url") or ""), stream_key),
-                    "key": stream_key,
-                }
-            )
         if enable_twitch:
             extra_outputs.append(
                 {
                     "id": "twitch",
                     "label": "Twitch",
-                    "platform": "twitch",
                     "url": build_rtmp_output_url(twitch_url, twitch_key),
                     "key": twitch_key.strip(),
                 }
@@ -261,7 +210,6 @@ def start_stream(
                 {
                     "id": "x",
                     "label": "X/Twitter",
-                    "platform": "x",
                     "url": build_rtmp_output_url(x_url, x_key),
                     "key": x_key.strip(),
                 }
@@ -319,7 +267,6 @@ def start_stream(
                 {
                     "id": output["id"],
                     "label": output["label"],
-                    "platform": output.get("platform", "youtube"),
                     "enabled": True,
                 }
                 for output in outputs
