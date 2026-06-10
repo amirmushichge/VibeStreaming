@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>YouTube Live Local</title>
-    <link rel="stylesheet" href="/static/styles.css?v=19" />
+    <title>VibeStreaming</title>
+    <link rel="stylesheet" href="/static/styles.css?v=20" />
   </head>
   <body>
     <main class="shell">
@@ -105,44 +105,39 @@
               <span>RECORDING ON</span>
             </label>
 
-            <div class="destination">
-              <label class="check">
-                <input name="enable_twitch" type="checkbox" disabled />
-                <span>TWITCH <em>SOON</em></span>
-              </label>
-              <div class="destination-grid">
-                <label>
-                  <span>TWITCH RTMP URL</span>
-                  <input
-                    name="twitch_url"
-                    type="text"
-                    value="rtmp://ingest.global-contribute.live-video.net/app"
-                    autocomplete="off"
-                    disabled
-                  />
-                </label>
-                <label>
-                  <span>TWITCH STREAM KEY</span>
-                  <input name="twitch_key" type="password" autocomplete="off" placeholder="live_..." disabled />
-                </label>
+            <div class="rtmp-manager">
+              <div class="rtmp-head">
+                <span>RTMP DESTINATIONS</span>
+                <button class="ghost small" type="button" id="clearDestinationBtn">&gt;new</button>
               </div>
-            </div>
 
-            <div class="destination">
-              <label class="check">
-                <input name="enable_x" type="checkbox" disabled />
-                <span>X/TWITTER <em>SOON</em></span>
-              </label>
-              <div class="destination-grid">
+              <div class="rtmp-editor">
                 <label>
-                  <span>X RTMP/RTMPS URL</span>
-                  <input name="x_url" type="text" autocomplete="off" placeholder="rtmps://..." disabled />
+                  <span>PRESET</span>
+                  <select id="destinationPreset"></select>
                 </label>
                 <label>
-                  <span>X STREAM KEY</span>
-                  <input name="x_key" type="password" autocomplete="off" disabled />
+                  <span>NAME</span>
+                  <input id="destinationLabel" type="text" maxlength="80" placeholder="Kick" autocomplete="off" />
                 </label>
+                <label class="rtmp-url-field">
+                  <span>RTMP URL</span>
+                  <input id="destinationUrl" type="text" placeholder="rtmp://..." autocomplete="off" />
+                </label>
+                <label>
+                  <span>STREAM KEY</span>
+                  <input id="destinationKey" type="password" placeholder="blank keeps key" autocomplete="off" />
+                </label>
+                <label class="check destination-enable">
+                  <input id="destinationEnabled" type="checkbox" checked />
+                  <span>ENABLED</span>
+                </label>
+                <div class="actions rtmp-actions">
+                  <button class="secondary" type="button" id="saveDestinationBtn">&gt;save_destination</button>
+                </div>
               </div>
+
+              <div class="destination-list" id="destinationList"></div>
             </div>
           </div>
 
@@ -184,6 +179,6 @@
       </section>
     </main>
 
-    <script src="/static/app.js?v=19"></script>
+    <script src="/static/app.js?v=20"></script>
   </body>
 </html>

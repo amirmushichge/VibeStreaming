@@ -1,6 +1,6 @@
-# YouTube Live Local
+# VibeStreaming
 
-Local Windows app for launching looped video files as YouTube Live streams through Google OAuth and `ffmpeg`.
+Local Windows app for launching looped video files as YouTube Live and multistream RTMP broadcasts through Google OAuth and `ffmpeg`.
 
 The app runs locally in a browser at `http://127.0.0.1:8765`. It is not a cloud service. OAuth files, channel tokens, uploaded videos, thumbnails, run history, and logs are stored on your own computer.
 
@@ -26,7 +26,7 @@ For testing and alpha releases, a local PC is enough. For production-like contin
 - Connect multiple YouTube channels and choose the active channel before launch.
 - Create a YouTube Live broadcast from the app.
 - Set title, description, and privacy: private, unlisted, or public.
-- Upload a video file and send it to YouTube as a live stream.
+- Upload a video file and send it to YouTube plus enabled RTMP destinations as live streams.
 - Loop the video indefinitely.
 - Upload a broadcast thumbnail.
 - Choose whether the broadcast recording should be saved, when YouTube allows it.
@@ -34,12 +34,25 @@ For testing and alpha releases, a local PC is enough. For production-like contin
 - Automatically reconnect `ffmpeg` after temporary RTMP/RTMPS failures.
 - Add a silent audio track when the source video has no audio.
 - Show a clickable YouTube watch link after launch.
+- Add manual RTMP destinations for Twitch, Kick, X/Twitter, Facebook Live, LinkedIn Live, Instagram Live, TikTok Live, or any custom RTMP endpoint.
+- Run each enabled destination in its own `ffmpeg` process so one platform can reconnect without stopping the others.
 
-## Twitch And X/Twitter Status
+## Multistream Destinations
 
-The UI already reserves space for Twitch and X/Twitter, but in the current alpha they are marked `SOON` and disabled. This keeps the alpha focused on YouTube while the multistream UI remains visible.
+YouTube is still the primary automatic destination. Extra platforms are configured as manual RTMP destinations with a server URL and stream key.
 
-The internal RTMP architecture already supports multiple outputs, but the public alpha is YouTube-first.
+Built-in presets are available for:
+
+- Twitch
+- Kick
+- X/Twitter
+- Facebook Live
+- LinkedIn Live
+- Instagram Live
+- TikTok Live
+- Custom RTMP
+
+Some platforms provide permanent stream keys. Others generate temporary keys per event or require account eligibility, professional tools, subscriptions, or manual confirmation in their own live dashboard. VibeStreaming can send the video to any destination that gives you a valid RTMP or RTMPS URL plus stream key.
 
 ## First Run On Windows
 
@@ -121,7 +134,8 @@ The YouTube channel must have live streaming enabled. For new channels, YouTube 
 7. Enter title and description.
 8. Choose privacy.
 9. Upload a thumbnail if needed.
-10. Click `>run`.
+10. Add and enable RTMP destinations if you want to stream to more platforms.
+11. Click `>run`.
 
 The app creates the YouTube broadcast, starts sending the video, and shows the watch link.
 
@@ -145,10 +159,11 @@ This folder may contain:
 - connected channel tokens;
 - uploaded videos;
 - thumbnails;
+- RTMP destination URLs and stream keys;
 - run history;
 - `ffmpeg` logs.
 
-Do not publish the `data` folder. It can contain tokens, private files, and local run history.
+Do not publish the `data` folder. It can contain tokens, stream keys, private files, and local run history.
 
 ## Security For 24/7 Servers
 
@@ -162,12 +177,12 @@ Before running 24/7:
 - Keep Windows Firewall enabled.
 - Do not expose port `8765` to the public internet.
 - Open the app only inside the server session at `http://127.0.0.1:8765`.
-- Do not upload `client_secret.json`, token files, videos, thumbnails, or `.\data` to GitHub, chats, file-sharing links, or public storage.
+- Do not upload `client_secret.json`, token files, RTMP stream keys, videos, thumbnails, or `.\data` to GitHub, chats, file-sharing links, or public storage.
 - Do not run unknown cracked software, browser extensions, or untrusted scripts on the streaming server.
 - Disable sleep mode and review Windows Update restart settings before long broadcasts.
 - Keep enough disk space for uploaded videos, thumbnails, logs, and temporary files.
 
-The most sensitive files are the connected channel tokens stored under `.\data\tokens`. They allow the app to manage YouTube Live broadcasts for connected channels. If the server is compromised or you no longer trust it, stop the stream, delete the `.\data` folder on that server, and revoke the app access from your Google Account security settings.
+The most sensitive files are the connected channel tokens stored under `.\data\tokens` and RTMP stream keys stored in `.\data\rtmp_destinations.json`. They allow the app to manage YouTube Live broadcasts and publish video to configured platforms. If the server is compromised or you no longer trust it, stop the stream, delete the `.\data` folder on that server, reset RTMP keys on each platform, and revoke the app access from your Google Account security settings.
 
 ## OAuth Troubleshooting On VPS
 
@@ -205,19 +220,19 @@ Auto-reconnect helps with short network failures, but it does not replace a stab
 Suggested repository description:
 
 ```text
-Local Windows app for launching looped video files as YouTube Live streams through Google OAuth and ffmpeg.
+Local Windows app for launching looped video files as YouTube Live and multistream RTMP broadcasts.
 ```
 
 Suggested topics:
 
 ```text
-youtube-live, ffmpeg, fastapi, livestream, local-app, windows, oauth2
+youtube-live, multistream, rtmp, ffmpeg, fastapi, livestream, local-app, windows, oauth2
 ```
 
 ## Alpha Limitations
 
-- YouTube is the main working platform.
-- Twitch and X/Twitter are displayed as `SOON`.
+- YouTube is the main automatic platform.
+- Extra platforms require you to provide a valid RTMP/RTMPS URL and stream key.
 - The app must run on the machine that sends the stream.
 - If the computer shuts down or sleeps, the stream does not continue.
 - Use a server for 24/7 streaming.

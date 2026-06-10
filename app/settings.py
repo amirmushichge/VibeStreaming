@@ -13,6 +13,7 @@ TOKEN_FILE = DATA_DIR / "token.json"
 PROFILE_INDEX_FILE = DATA_DIR / "channel_profiles.json"
 OAUTH_STATE_FILE = DATA_DIR / "oauth_state.txt"
 RUN_HISTORY_FILE = DATA_DIR / "runs.jsonl"
+RTMP_DESTINATIONS_FILE = DATA_DIR / "rtmp_destinations.json"
 
 APP_HOST = "127.0.0.1"
 APP_PORT = 8765
